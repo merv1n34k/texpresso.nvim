@@ -1,7 +1,19 @@
 # TeXpresso.vim
 Neovim mode for TeXpresso
 
-Installation:
+## Installation:
+### With Lazy.nvim
+
+1. Install [TeXpresso](https://github.com/let-def/texpresso).
+   If installation is successful, you should have `texpresso` binary in your PATH.
+2. Then, add the following to your `init.lua` or any sourced file:
+```lua
+{
+    "let-def/texpresso.vim",
+}
+```
+
+### Manual installation
 1. Install [TeXpresso](https://github.com/let-def/texpresso).
    If installation is successful, you should have `texpresso` binary in your PATH.
 2. Clone [TeXpresso.vim](https://github.com/let-def/texpresso.vim.git), and make sure it is in Neovim runtime path.
