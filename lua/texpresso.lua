@@ -215,7 +215,7 @@ end
 
 -- Attach a hook to synchronize a buffer
 function M.attach(...)
-  local let args = {...}
+  local args = {...}
   local buf = args[1] or 0
   local generation = job.generation
   M.reload(buf)
@@ -242,12 +242,12 @@ end
 
 -- Use VIM theme in TeXpresso
 function M.theme()
-  local colors = vim.api.nvim_get_hl_by_name("Normal", true)
-  if colors.background and colors.foreground then
+  local colors = vim.api.nvim_get_hl(0, { name = "Normal" })
+  if colors.bg and colors.fg then
     M.send(
       "theme",
-      format_color(colors.background),
-      format_color(colors.foreground)
+      format_color(colors.bg),
+      format_color(colors.fg)
     )
   end
 end
@@ -293,7 +293,7 @@ function M.launch(args)
   if job.process then
     vim.fn.chanclose(job.process)
   end
-  cmd = {M.texpresso_path, "-json", "-lines"}
+  local cmd = {M.texpresso_path, "-json", "-lines"}
 
   if #args == 0 then
     args = M.last_args
