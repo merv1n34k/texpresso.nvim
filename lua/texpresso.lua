@@ -252,6 +252,19 @@ function M.theme()
   end
 end
 
+-- Check if TeXpresso process is running
+function M.is_running()
+  return job.process ~= nil
+end
+
+-- Stop the TeXpresso process
+function M.stop()
+  if job.process then
+    vim.fn.chanclose(job.process)
+    job.process = nil
+  end
+end
+
 -- Go to next page
 function M.next_page()
   M.send("next-page")
