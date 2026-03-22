@@ -194,7 +194,7 @@ end
 function M.send(...)
   local text = vim.json.encode({...})
   if job.process then
-    vim.fn.chansend(job.process, {text, ""})
+    job.process:write(text .. "\n")
   end
   -- p(text)
 end
@@ -260,7 +260,7 @@ end
 -- Stop the TeXpresso process
 function M.stop()
   if job.process then
-    vim.fn.chanclose(job.process)
+    job.process:kill()
     job.process = nil
   end
 end
@@ -304,7 +304,7 @@ end
 -- Start a new TeXpresso viewer
 function M.launch(args)
   if job.process then
-    vim.fn.chanclose(job.process)
+    job.process:kill()
   end
   local cmd = {M.texpresso_path, "-json", "-lines"}
 
@@ -319,37 +319,43 @@ function M.launch(args)
   end
 
   for _, arg in ipairs(args) do
-      table.insert(cmd, arg)
+    table.insert(cmd, arg)
   end
   job.queued = ""
-  job.process = vim.fn.jobstart(cmd, {
-      on_stdout = function(j, data, e)
-        if job.queued then
-          data[1] = job.queued .. data[1]
-        end
-        job.queued = table.remove(data)
-        for _, line in ipairs(data) do
-          if line ~= "" then
-            local ok, val = pcall(function ()
-              process_message(vim.json.decode(line))
-            end)
-            if not ok then
-              p("error while processing input", line, val)
-            end
+  job.process = vim.system(cmd, {
+    stdin = true,
+    stdout = function(err, data)
+      if not data then return end
+      local lines = vim.split(data, "\n", { plain = true })
+      if job.queued then
+        lines[1] = job.queued .. lines[1]
+      end
+      job.queued = table.remove(lines)
+      for _, line in ipairs(lines) do
+        if line ~= "" then
+          local ok, val = pcall(function()
+            process_message(vim.json.decode(line))
+          end)
+          if not ok then
+            p("error while processing input", line, val)
           end
         end
-      end,
-      on_stderr = function(j, d, e)
+      end
+    end,
+    stderr = function(err, data)
+      if not data then return end
+      vim.schedule(function()
         local buf = log_buffer()
-        buffer_append(buf, d)
+        local lines = vim.split(data, "\n", { plain = true })
+        buffer_append(buf, lines)
         if vim.api.nvim_buf_line_count(buf) > 8000 then
           vim.api.nvim_buf_set_lines(buf, 0, -4000, false, {})
         end
-      end,
-      on_exit = function()
-        job.process = nil
-      end,
-  })
+      end)
+    end,
+  }, function()
+    job.process = nil
+  end)
   job.generation = {}
   M.theme()
 end
