@@ -347,7 +347,7 @@ function M.launch(args)
     table.insert(cmd, arg)
   end
   job.queued = ''
-  job.process = vim.system(cmd, {
+  local ok, proc = pcall(vim.system, cmd, {
     stdin = true,
     stdout = function(err, data)
       if not data then
@@ -360,10 +360,10 @@ function M.launch(args)
       job.queued = table.remove(lines)
       for _, line in ipairs(lines) do
         if line ~= '' then
-          local ok, val = pcall(function()
+          local decode_ok, val = pcall(function()
             process_message(vim.json.decode(line))
           end)
-          if not ok then
+          if not decode_ok then
             p('error while processing input', line, val)
           end
         end
@@ -385,6 +385,11 @@ function M.launch(args)
   }, function()
     job.process = nil
   end)
+  if not ok then
+    vim.notify('TeXpresso: failed to start: ' .. tostring(proc), vim.log.levels.ERROR)
+    return
+  end
+  job.process = proc
   job.generation = {}
   M.theme()
   for buf, _ in pairs(job.attached) do
