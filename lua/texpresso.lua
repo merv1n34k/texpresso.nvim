@@ -345,7 +345,7 @@ function M.launch(args)
     M.last_args = args
   end
   if #args == 0 then
-    print('No root file has been specified, use e.g. :TeXpresso main.tex')
+    vim.notify('TeXpresso: no root file specified, use e.g. :TeXpresso main.tex', vim.log.levels.WARN)
     return
   end
 
