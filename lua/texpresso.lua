@@ -88,11 +88,12 @@ end
 local skip_synctex = false
 local function synctex_backward(file, line)
   skip_synctex = true
-  if not (pcall(function()
-    vim.cmd('b +' .. line .. ' ' .. file)
-  end)) then
-    vim.cmd('e +' .. line .. ' ' .. file)
+  local escaped = vim.fn.fnameescape(file)
+  local ok = pcall(vim.cmd.buffer, escaped)
+  if not ok then
+    vim.cmd.edit(escaped)
   end
+  pcall(vim.api.nvim_win_set_cursor, 0, { line, 0 })
 end
 
 -- Manage quickfix list
