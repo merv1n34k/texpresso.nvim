@@ -120,7 +120,7 @@ end
 -- Parse a Tectonic diagnostic line to quickfix format
 local function format_fix(line)
   local typ, f, l, txt
-  typ, f, l, txt = string.match(line, '([a-z]+): (.*):(%d*): (.*)')
+  typ, f, l, txt = string.match(line, '([a-z]+): (.-):(%d+): (.*)')
   if not typ then
     return { text = line }
   elseif string.match(txt, '^Overfull') or string.match(txt, '^Underfull') then
