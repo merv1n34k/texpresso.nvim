@@ -79,11 +79,9 @@ end
 -- TeXpresso represents a color as triple (R, G, B).
 -- R, G, B are floating points in the 0.0 .. 1.0 range.
 local function format_color(c)
-  local b = math.fmod(c, 256) / 255
-  c = math.floor(c / 256)
-  local g = math.fmod(c, 256) / 255
-  c = math.floor(c / 256)
-  local r = math.fmod(c, 256) / 255
+  local r = bit.rshift(c, 16) / 255
+  local g = bit.band(bit.rshift(c, 8), 0xFF) / 255
+  local b = bit.band(c, 0xFF) / 255
   return { r, g, b }
 end
 
