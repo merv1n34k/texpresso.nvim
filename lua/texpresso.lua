@@ -159,7 +159,6 @@ end
 -- Internal functions to communicate with TeXpresso
 
 -- Process a message received from TeXpresso
--- TODO: handle message, right now they are only logged
 local function process_message(json)
   -- p(json)
   local msg = json[1]

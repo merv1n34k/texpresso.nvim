@@ -1,23 +1,7 @@
 # TODO
 
-## Bugs
-- [ ] Fix command injection in `synctex_backward` — file paths with spaces/special chars break `vim.cmd` string concatenation
-- [ ] Fix `format_fix` greedy regex — `(.*):(%d*):` misparsed filenames with colons; `%d*` matches zero digits
-- [ ] Fix `ftplugin/tex.lua` calling `attach()` before launch — sends are silently dropped, root cause of #8
-- [ ] Reset `M.log`/`M.fix`/`M.fixcursor` on `M.launch` restart — stale diagnostics persist across sessions
-- [ ] Handle `vim.system` spawn failure — no user feedback if binary not found
-
-## Improvements
-- [ ] Early-return in `synctex_forward_hook` when process not running — runs on every `CursorMoved` unnecessarily
-- [ ] Simplify `M.attach(...)` varargs to `M.attach(buf)` direct parameter
-- [ ] Cache `getqfid()` result in `setqf` — currently called twice per invocation
-- [ ] Use `vim.notify()` instead of `print()` for user-facing messages
-- [ ] Use bit operations (`bit.rshift`/`bit.band`) in `format_color` instead of `math.fmod`/`math.floor`
-- [ ] Avoid mutating input `lines` table in `buffer_append`
-- [ ] Improve log buffer lifecycle — use `BufDelete` autocmd instead of scanning all buffers
-
 ## Upstream Issues
-- [ ] Fix included files not updating preview on edit (#8)
+- [x] Fix included files not updating preview on edit (#8)
 - [ ] Resolve quickfix filenames to absolute paths (#1)
 - [ ] Investigate auto-rendering not triggering on buffer change (#5)
 - [ ] Windows/WSL support (#7)
@@ -44,3 +28,15 @@
 - [x] Add `M.is_running()` and `M.stop()` public API
 - [x] Migrate from `vim.fn.jobstart` to `vim.system`
 - [x] Add stylua config and format codebase
+- [x] Fix command injection in `synctex_backward`
+- [x] Fix `format_fix` greedy regex
+- [x] Track attached buffers and sync on launch (#8)
+- [x] Reset diagnostics and log state on launch restart
+- [x] Handle `vim.system` spawn failure gracefully
+- [x] Early-return in `synctex_forward_hook` when process not running
+- [x] Simplify `M.attach(...)` varargs to `M.attach(buf)`
+- [x] Cache `getqfid()` result in `setqf`
+- [x] Use `vim.notify()` instead of `print()`
+- [x] Use bit operations in `format_color`
+- [x] Avoid mutating input table in `buffer_append`
+- [x] Improve log buffer lifecycle with `BufDelete` autocmd
