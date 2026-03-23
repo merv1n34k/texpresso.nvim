@@ -1,53 +1,86 @@
-# TeXpresso.vim
-Neovim mode for TeXpresso
+# TeXpresso.nvim
 
-## Installation:
+Neovim plugin for [TeXpresso](https://github.com/let-def/texpresso) — a live LaTeX previewer with real-time editing, SyncTeX synchronization, and quickfix diagnostics.
+
+>[!IMPORTANT]
+> This is a fork of [let-def/texpresso.vim](https://github.com/let-def/texpresso.vim). Changes will eventually be merged upstream.
+
+**Requirements:** Neovim 0.10+ and [TeXpresso](https://github.com/let-def/texpresso) binary in your PATH.
+
+## Installation
+
+### With vim.pack (Neovim 0.12+)
+
+Add to your `init.lua`:
+
+```lua
+vim.pack.add({
+  'https://github.com/merv1n34k/texpresso.nvim',
+})
+```
+
 ### With Lazy.nvim
 
-1. Install [TeXpresso](https://github.com/let-def/texpresso).
-   If installation is successful, you should have `texpresso` binary in your PATH.
-2. Then, add the following to your `init.lua` or any sourced file:
 ```lua
 {
-    "let-def/texpresso.vim",
+  'merv1n34k/texpresso.nvim',
 }
 ```
 
 ### Manual installation
-1. Install [TeXpresso](https://github.com/let-def/texpresso).
-   If installation is successful, you should have `texpresso` binary in your PATH.
-2. Clone [TeXpresso.vim](https://github.com/let-def/texpresso.vim.git), and make sure it is in Neovim runtime path.
-   For instance:
-   ```shell
-   $ cd ~/.config/nvim
-   $ mkdir start
-   $ cd start
-   $ git clone https://github.com/let-def/texpresso.vim.git
-   ```
 
-Usage:
-1. Open a `.tex` file. Launch the viewer:
+Clone [TeXpresso.nvim](https://github.com/merv1n34k/texpresso.nvim) and make sure it is in Neovim runtime path.
+For instance:
+
+```shell
+cd ~/.config/nvim/pack/plugins/start
+git clone https://github.com/merv1n34k/texpresso.nvim.git
+```
+
+## Usage
+
+1. Open a `.tex` file and launch the viewer:
    `:TeXpresso <path/to/main.tex>` (e.g. `:TeXpresso %` if the current file is the root)
-2. The viewer should let you preview the `.tex` file.
-   It should track your position in the buffer (when the cursor moves), and
-   any change to the buffer should be reflected quickly in the preview window.
-
-TODO:
-- report errors/warnings in vim quickfix buffer
-- allow customization: theme, cursor synchronizaiton, bindings, stay-on-top, ..
-- simplify initialization, respect Neovim conventions, make code more robust
+2. The viewer will preview the `.tex` file, track your cursor position,
+   and reflect buffer changes in real-time.
 
 ## Configuration
 
-The mode can be customized by changing some lua variables.
-
 ### `texpresso_path`
 
-You can customize the path to texpresso binary:
+Customize the path to the texpresso binary:
 
 ```lua
-:lua require('texpresso').texpresso_path = "/home/.../texpresso/build/texpresso"
+require('texpresso').texpresso_path = '/path/to/texpresso'
 ```
+
+### API
+
+```lua
+local tp = require('texpresso')
+
+tp.is_running()      -- Check if TeXpresso process is active
+tp.stop()            -- Stop the TeXpresso process
+tp.theme()           -- Sync Neovim colors to the viewer
+tp.synctex_forward() -- Jump PDF to cursor position
+tp.next_page()       -- Go to next page
+tp.previous_page()   -- Go to previous page
+```
+
+### Debug logging
+
+```lua
+require('texpresso').logger = function(msg)
+  print(msg)
+end
+```
+
+## Roadmap
+
+- [ ] Resolve quickfix filenames to absolute paths ([#1](https://github.com/let-def/texpresso.vim/issues/1))
+- [ ] Investigate auto-rendering not triggering on buffer change ([#5](https://github.com/let-def/texpresso.vim/issues/5))
+- [ ] Allow customization: cursor sync, keybindings, stay-on-top
+- [ ] Handle unknown incoming message types
 
 ## Screenshots
 
