@@ -56,8 +56,11 @@ end
 -- lines.
 local function buffer_append(buf, lines)
   local last = vim.api.nvim_buf_get_lines(buf, -2, -1, false)
-  lines[1] = last[1] .. lines[1]
-  vim.api.nvim_buf_set_lines(buf, -2, -1, false, lines)
+  local merged = { last[1] .. lines[1] }
+  for i = 2, #lines do
+    merged[i] = lines[i]
+  end
+  vim.api.nvim_buf_set_lines(buf, -2, -1, false, merged)
 end
 
 -- Get buffer lines as a single string,
