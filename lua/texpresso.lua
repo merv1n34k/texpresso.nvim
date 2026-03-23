@@ -31,23 +31,21 @@ local function p(...)
 end
 
 -- ID of the buffer storing TeXpresso log
--- TODO: current logic is clunky when the buffer is closed.
---       look how other plugins handle that.
-local log_buffer_id = -1
+local log_buffer_id = nil
 
 -- Get the ID of the logging buffer, creating it if it does not exist.
 local function log_buffer()
-  if not vim.api.nvim_buf_is_valid(log_buffer_id) then
-    for _, buf in ipairs(vim.api.nvim_list_bufs()) do
-      if vim.api.nvim_buf_get_name(buf) == 'texpresso-log' then
-        log_buffer_id = buf
-      end
-    end
+  if log_buffer_id and vim.api.nvim_buf_is_valid(log_buffer_id) then
+    return log_buffer_id
   end
-  if not vim.api.nvim_buf_is_valid(log_buffer_id) then
-    log_buffer_id = vim.api.nvim_create_buf(true, true)
-    vim.api.nvim_buf_set_name(log_buffer_id, 'texpresso-log')
-  end
+  log_buffer_id = vim.api.nvim_create_buf(true, true)
+  vim.api.nvim_buf_set_name(log_buffer_id, 'texpresso-log')
+  vim.api.nvim_create_autocmd('BufDelete', {
+    buffer = log_buffer_id,
+    callback = function()
+      log_buffer_id = nil
+    end,
+  })
   return log_buffer_id
 end
 
