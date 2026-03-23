@@ -327,6 +327,10 @@ function M.launch(args)
   if job.process then
     job.process:kill()
   end
+  M.log = {}
+  M.fix = {}
+  M.fixcursor = 0
+  setqf({})
   local cmd = { M.texpresso_path, '-json', '-lines' }
 
   if #args == 0 then
