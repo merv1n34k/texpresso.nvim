@@ -310,6 +310,9 @@ local last_line = -1
 local last_file = ''
 
 function M.synctex_forward_hook()
+  if not job.process then
+    return
+  end
   if skip_synctex then
     skip_synctex = false
     return
