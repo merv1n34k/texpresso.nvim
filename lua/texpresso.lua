@@ -135,6 +135,7 @@ local job = {
   queued = nil,
   process = nil,
   generation = {},
+  attached = {},
 }
 
 -- Log output from TeX
@@ -227,13 +228,21 @@ function M.change_lines(buf, index, count, last)
 end
 
 -- Attach a hook to synchronize a buffer
-function M.attach(...)
-  local args = { ... }
-  local buf = args[1] or 0
+function M.attach(buf)
+  buf = buf or vim.api.nvim_get_current_buf()
+  if job.attached[buf] then
+    return
+  end
+  job.attached[buf] = true
+
+  if job.process then
+    M.reload(buf)
+  end
+
   local generation = job.generation
-  M.reload(buf)
   vim.api.nvim_buf_attach(buf, false, {
     on_detach = function(_detach, buf)
+      job.attached[buf] = nil
       M.send('close', vim.api.nvim_buf_get_name(buf))
     end,
     on_reload = function(_reload, buf)
@@ -241,6 +250,9 @@ function M.attach(...)
       generation = job.generation
     end,
     on_lines = function(_lines, buf, _tick, first, oldlast, newlast, _bytes)
+      if not job.process then
+        return
+      end
       if generation == job.generation then
         M.change_lines(buf, first, oldlast - first, newlast)
       else
@@ -371,6 +383,13 @@ function M.launch(args)
   end)
   job.generation = {}
   M.theme()
+  for buf, _ in pairs(job.attached) do
+    if vim.api.nvim_buf_is_valid(buf) then
+      M.reload(buf)
+    else
+      job.attached[buf] = nil
+    end
+  end
 end
 
 -- Hooks
