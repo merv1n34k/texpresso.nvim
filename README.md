@@ -65,6 +65,46 @@ tp.theme()           -- Sync Neovim colors to the viewer
 tp.synctex_forward() -- Jump PDF to cursor position
 tp.next_page()       -- Go to next page
 tp.previous_page()   -- Go to previous page
+
+-- Stream mode (requires a texpresso build with -stream)
+tp.stream_mode       -- set to true before launch() to enable streaming
+tp.prime_patterns    -- glob list used by prime() (default: tex/bib/cls/sty)
+tp.push(path, data)  -- push arbitrary bytes into texpresso's VFS at `path`
+                     -- binary content auto-routes via open-base64
+tp.prime(dir)        -- proactively push all files matching prime_patterns
+                     -- (defaults to the launched root document directory)
+```
+
+### Stream mode
+
+When `stream_mode = true`, the plugin launches texpresso with `-stream`,
+frames bulk pushes with `pause`/`resume`, and responds to `lookup-file`
+notifications by pushing buffer content (or disk fallback). This decouples
+"what the editor sees" from "what texpresso sees": arbitrary bytes can be
+pushed to arbitrary virtual paths.
+
+```lua
+-- Buffer-driven: open .tex files, prime the project upfront
+local tp = require('texpresso')
+tp.stream_mode = true
+tp.launch({ 'main.tex' })
+tp.prime() -- push every *.tex/*.bib/*.cls/*.sty under main.tex's directory
+```
+
+```lua
+-- Preprocessor-driven: synthesize TeX in-memory from any markup
+local tp = require('texpresso')
+tp.stream_mode = true
+tp.launch({ '/virtual/document.tex' })
+
+vim.api.nvim_create_autocmd({ 'TextChanged', 'TextChangedI' }, {
+  buffer = md_buf,
+  callback = function()
+    local lines = vim.api.nvim_buf_get_lines(md_buf, 0, -1, false)
+    local tex = my_md_to_tex(table.concat(lines, '\n'))
+    tp.push('/virtual/document.tex', tex)
+  end,
+})
 ```
 
 ### Debug logging
