@@ -4,6 +4,15 @@ local M = {}
 
 M.texpresso_path = 'texpresso'
 
+-- Enable stream mode: pass -stream to texpresso and frame bulk
+-- pushes with pause/resume + register. Default keeps the legacy
+-- (non-streaming) protocol so old texpresso builds still work.
+M.stream_mode = false
+
+-- Glob patterns used by M.prime() to collect project files to push
+-- into the texpresso VFS proactively.
+M.prime_patterns = { '**/*.tex', '**/*.bib', '**/*.cls', '**/*.sty' }
+
 -- Logging routines
 
 -- Debug logging function, silent by default
@@ -135,6 +144,7 @@ local job = {
   process = nil,
   generation = {},
   attached = {},
+  doc_path = nil,
 }
 
 -- Log output from TeX
@@ -157,6 +167,34 @@ local function expand(tbl, count, default)
 end
 
 -- Internal functions to communicate with TeXpresso
+
+-- Push a path into the texpresso VFS, sourcing content from a live
+-- attached buffer if available, otherwise from disk. Used to respond
+-- to lookup-file notifications.
+local function push_file(path)
+  local abs = (path:sub(1, 1) == '/') and path or (job.doc_path and (job.doc_path .. '/' .. path))
+  if not abs then
+    return
+  end
+
+  for buf, _ in pairs(job.attached) do
+    if vim.api.nvim_buf_is_valid(buf) and vim.api.nvim_buf_get_name(buf) == abs then
+      M.reload(buf)
+      return
+    end
+  end
+
+  local f = io.open(abs, 'rb')
+  if not f then
+    vim.notify('TeXpresso: cannot provide ' .. abs, vim.log.levels.WARN)
+    return
+  end
+  local data = f:read('*a')
+  f:close()
+  if data then
+    M.push(abs, data)
+  end
+end
 
 -- Process a message received from TeXpresso
 local function process_message(json)
@@ -199,6 +237,13 @@ local function process_message(json)
     vim.schedule(function()
       setqf(M.fix)
     end)
+  elseif msg == 'lookup-file' then
+    local kind, status, path = json[2], json[3], json[4]
+    if kind == 'read' and (status == 'failed' or status == 'promised') then
+      vim.schedule(function()
+        push_file(path)
+      end)
+    end
   end
 end
 
@@ -211,10 +256,21 @@ function M.send(...)
   -- p(text)
 end
 
+-- Push arbitrary content into the TeXpresso VFS at `path`.
+-- Auto-detects binary content (null byte present) and routes it
+-- through `open-base64`; plain text uses `open`.
+function M.push(path, content)
+  if content:find('\0') then
+    M.send('open-base64', path, vim.base64.encode(content))
+  else
+    M.send('open', path, content)
+  end
+end
+
 -- Reload buffer in TeXpresso
 function M.reload(buf)
   local path = vim.api.nvim_buf_get_name(buf)
-  M.send('open', path, buffer_get_lines(buf, 0, -1))
+  M.push(path, buffer_get_lines(buf, 0, -1))
 end
 
 -- Communicate changed lines
@@ -234,6 +290,9 @@ function M.attach(buf)
   job.attached[buf] = true
 
   if job.process then
+    if M.stream_mode then
+      M.send('register', vim.api.nvim_buf_get_name(buf))
+    end
     M.reload(buf)
   end
 
@@ -323,6 +382,39 @@ function M.synctex_forward_hook()
   M.send('synctex-forward', file, line)
 end
 
+-- Proactively push all project files matching M.prime_patterns into
+-- the texpresso VFS. In stream mode, framed by a single pause/resume
+-- so the engine sees a consistent snapshot.
+function M.prime(dir)
+  if not job.process then
+    return
+  end
+  dir = dir or job.doc_path
+  if not dir then
+    return
+  end
+
+  if M.stream_mode then
+    M.send('pause')
+  end
+  for _, pattern in ipairs(M.prime_patterns) do
+    local files = vim.fn.globpath(dir, pattern, false, true)
+    for _, path in ipairs(files) do
+      local f = io.open(path, 'rb')
+      if f then
+        local data = f:read('*a')
+        f:close()
+        if data then
+          M.push(path, data)
+        end
+      end
+    end
+  end
+  if M.stream_mode then
+    M.send('resume')
+  end
+end
+
 -- Start a new TeXpresso viewer
 function M.launch(args)
   if job.process then
@@ -333,6 +425,9 @@ function M.launch(args)
   M.fixcursor = 0
   setqf({})
   local cmd = { M.texpresso_path, '-json', '-lines' }
+  if M.stream_mode then
+    table.insert(cmd, '-stream')
+  end
 
   if #args == 0 then
     args = M.last_args
@@ -346,6 +441,8 @@ function M.launch(args)
     )
     return
   end
+
+  job.doc_path = vim.fn.fnamemodify(vim.fn.expand(args[1]), ':p:h')
 
   for _, arg in ipairs(args) do
     table.insert(cmd, arg)
@@ -396,12 +493,21 @@ function M.launch(args)
   job.process = proc
   job.generation = {}
   M.theme()
+  if M.stream_mode then
+    M.send('pause')
+  end
   for buf, _ in pairs(job.attached) do
     if vim.api.nvim_buf_is_valid(buf) then
+      if M.stream_mode then
+        M.send('register', vim.api.nvim_buf_get_name(buf))
+      end
       M.reload(buf)
     else
       job.attached[buf] = nil
     end
+  end
+  if M.stream_mode then
+    M.send('resume')
   end
 end
 
