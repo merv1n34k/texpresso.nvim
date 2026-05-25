@@ -526,6 +526,21 @@ vim.api.nvim_create_autocmd('CursorMoved', {
   callback = M.synctex_forward_hook,
 })
 
+-- Make sure the texpresso process doesn't outlive the Neovim session.
+-- vim.system spawns it without detach, so the OS usually reaps it, but
+-- this guarantees a clean shutdown even when Neovim exits abnormally
+-- enough to bypass that path.
+vim.api.nvim_create_autocmd('VimLeavePre', {
+  callback = function()
+    if job.process then
+      pcall(function()
+        job.process:kill()
+      end)
+      job.process = nil
+    end
+  end,
+})
+
 -- VIM commands
 
 vim.api.nvim_create_user_command('TeXpresso', function(opts)
