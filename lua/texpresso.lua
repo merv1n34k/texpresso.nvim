@@ -9,6 +9,12 @@ M.texpresso_path = 'texpresso'
 -- (non-streaming) protocol so old texpresso builds still work.
 M.stream_mode = false
 
+-- When false, backward synctex events from texpresso (PDF click) are
+-- ignored instead of opening the source file at that line. Useful when
+-- the on-disk source is a synthesized intermediate (e.g. marksetta's
+-- preview.tex) that the user shouldn't be dropped into.
+M.synctex_backward_enabled = true
+
 -- Glob patterns used by M.prime() to collect project files to push
 -- into the texpresso VFS proactively.
 M.prime_patterns = { '**/*.tex', '**/*.bib', '**/*.cls', '**/*.sty' }
@@ -207,9 +213,11 @@ local function process_message(json)
   if msg == 'reset-sync' then
     job.generation = {}
   elseif msg == 'synctex' then
-    vim.schedule(function()
-      synctex_backward(json[2], json[3])
-    end)
+    if M.synctex_backward_enabled then
+      vim.schedule(function()
+        synctex_backward(json[2], json[3])
+      end)
+    end
   elseif msg == 'truncate-lines' then
     local name = json[2]
     local count = json[3]
