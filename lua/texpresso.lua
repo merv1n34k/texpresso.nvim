@@ -186,7 +186,11 @@ local function push_file(path)
 
   local f = io.open(abs, 'rb')
   if not f then
-    vim.notify('TeXpresso: cannot provide ' .. abs, vim.log.levels.WARN)
+    -- Silent by default: standard texmf files (article.cls, size10.clo, ...)
+    -- aren't on disk and aren't ours to provide. Texpresso resolves those
+    -- via -texlive/-tectonic; we only get here for files texpresso could
+    -- not find anywhere. Route to the optional debug logger.
+    p('cannot provide', abs)
     return
   end
   local data = f:read('*a')
