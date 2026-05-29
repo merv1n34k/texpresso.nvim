@@ -4,9 +4,9 @@ local M = {}
 
 M.texpresso_path = 'texpresso'
 
--- Enable stream mode: pass -stream to texpresso and frame bulk
--- pushes with pause/resume + register. Default keeps the legacy
--- (non-streaming) protocol so old texpresso builds still work.
+-- Enable stream mode: pass -stream, register buffers, prime VFS,
+-- then (resume). Engine auto-pauses on -stream launch. Default off
+-- for compat with old texpresso builds.
 M.stream_mode = false
 
 -- When false, backward synctex events from texpresso (PDF click) are
@@ -505,9 +505,8 @@ function M.launch(args)
   job.process = proc
   job.generation = {}
   M.theme()
-  if M.stream_mode then
-    M.send('pause')
-  end
+  -- In stream mode the engine boots paused; register + reload happen
+  -- while paused, then (resume) starts rendering with the VFS ready.
   for buf, _ in pairs(job.attached) do
     if vim.api.nvim_buf_is_valid(buf) then
       if M.stream_mode then

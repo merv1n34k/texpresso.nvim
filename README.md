@@ -77,11 +77,13 @@ tp.prime(dir)        -- proactively push all files matching prime_patterns
 
 ### Stream mode
 
-When `stream_mode = true`, the plugin launches texpresso with `-stream`,
-frames bulk pushes with `pause`/`resume`, and responds to `lookup-file`
-notifications by pushing buffer content (or disk fallback). This decouples
-"what the editor sees" from "what texpresso sees": arbitrary bytes can be
-pushed to arbitrary virtual paths.
+When `stream_mode = true`, the plugin launches texpresso with `-stream`.
+The engine starts paused; the plugin registers attached buffers, primes
+the VFS, then sends `resume` to begin rendering. Further bulk pushes
+(e.g. `prime()`) are framed with `pause`/`resume` for an atomic snapshot.
+`lookup-file` notifications are answered by pushing buffer content (or
+disk fallback). This decouples "what the editor sees" from "what
+texpresso sees": arbitrary bytes can be pushed to arbitrary virtual paths.
 
 ```lua
 -- Buffer-driven: open .tex files, prime the project upfront
