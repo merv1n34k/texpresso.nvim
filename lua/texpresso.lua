@@ -15,6 +15,10 @@ M.stream_mode = false
 -- preview.tex) that the user shouldn't be dropped into.
 M.synctex_backward_enabled = true
 
+-- Pass -rerun so texpresso converges TOC/refs after idle (latexmk-style
+-- multi-pass). Default off for compat with old texpresso builds.
+M.rerun = false
+
 -- Glob patterns used by M.prime() to collect project files to push
 -- into the texpresso VFS proactively.
 M.prime_patterns = { '**/*.tex', '**/*.bib', '**/*.cls', '**/*.sty' }
@@ -439,6 +443,9 @@ function M.launch(args)
   local cmd = { M.texpresso_path, '-json', '-lines' }
   if M.stream_mode then
     table.insert(cmd, '-stream')
+  end
+  if M.rerun then
+    table.insert(cmd, '-rerun')
   end
 
   if #args == 0 then
