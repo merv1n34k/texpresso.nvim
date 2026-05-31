@@ -164,6 +164,52 @@ M.log = {}
 M.fix = {}
 M.fixcursor = 0
 
+-- Engine state mirror for statusline / external consumers.
+-- Updated from texpresso stderr + LaTeX log lines. Consumers poll this
+-- table; texpresso.nvim does not trigger redraws — that's the consumer's
+-- concern (statusline plugin, autocmd, timer).
+M.status = {
+  running    = false, -- texpresso process alive
+  pages      = nil,   -- last "Output written on … (N pages)"
+  rerun      = nil,   -- { pass = N, total = M } during convergence, nil otherwise
+  outcome    = nil,   -- 'converged' | 'max' | 'crashed' | nil
+  rerun_hint = false, -- engine asked for another pass
+}
+
+local function reset_status()
+  M.status.running = false
+  M.status.pages = nil
+  M.status.rerun = nil
+  M.status.outcome = nil
+  M.status.rerun_hint = false
+end
+
+-- Parse one stderr/log line and update M.status if it matches a known
+-- pattern. Tracks texpresso's [rerun] messages and the LaTeX engine's
+-- "Output written on" / rerun-hint output.
+local function classify_status_line(line)
+  local pass, total = line:match('^%[rerun%] idle %d+ms: finishing pass (%d+)/(%d+)')
+  if pass then
+    M.status.rerun = { pass = tonumber(pass), total = tonumber(total) }
+    M.status.outcome = nil
+    M.status.rerun_hint = false
+    return
+  end
+  if line:match('^%[rerun%] aux byte%-stable, convergence reached') then
+    M.status.rerun = nil
+    M.status.outcome = 'converged'
+    return
+  end
+  local _, n = line:match('^Output written on (.-) %((%d+) pages')
+  if n then
+    M.status.pages = tonumber(n)
+    return
+  end
+  if line:match('Rerun to get cross%-references right') then
+    M.status.rerun_hint = true
+  end
+end
+
 local function shrink(tbl, count)
   for _ = count, #tbl - 1 do
     table.remove(tbl)
@@ -237,6 +283,7 @@ local function process_message(json)
     if name == 'log' then
       for i = 3, #json do
         table.insert(M.log, json[i])
+        classify_status_line(json[i])
       end
     elseif name == 'out' then
       for i = 3, #json do
@@ -354,6 +401,7 @@ end
 -- Stop the TeXpresso process
 function M.stop()
   if job.process then
+    job.stop_requested = true
     job.process:kill()
     job.process = nil
   end
@@ -497,13 +545,21 @@ function M.launch(args)
         local buf = log_buffer()
         local lines = vim.split(data, '\n', { plain = true })
         buffer_append(buf, lines)
+        for _, line in ipairs(lines) do
+          classify_status_line(line)
+        end
         if vim.api.nvim_buf_line_count(buf) > 8000 then
           vim.api.nvim_buf_set_lines(buf, 0, -4000, false, {})
         end
       end)
     end,
-  }, function()
+  }, function(obj)
     job.process = nil
+    M.status.running = false
+    if obj and obj.code and obj.code ~= 0 and not job.stop_requested then
+      M.status.outcome = 'crashed'
+    end
+    job.stop_requested = false
   end)
   if not ok then
     vim.notify('TeXpresso: failed to start: ' .. tostring(proc), vim.log.levels.ERROR)
@@ -511,6 +567,8 @@ function M.launch(args)
   end
   job.process = proc
   job.generation = {}
+  reset_status()
+  M.status.running = true
   M.theme()
   -- In stream mode the engine boots paused; register + reload happen
   -- while paused, then (resume) starts rendering with the VFS ready.
@@ -547,6 +605,7 @@ vim.api.nvim_create_autocmd('CursorMoved', {
 vim.api.nvim_create_autocmd('VimLeavePre', {
   callback = function()
     if job.process then
+      job.stop_requested = true
       pcall(function()
         job.process:kill()
       end)
