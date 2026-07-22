@@ -66,9 +66,11 @@ tp.synctex_forward() -- Jump PDF to cursor position
 tp.next_page()       -- Go to next page
 tp.previous_page()   -- Go to previous page
 
--- Idle convergence (requires a texpresso build with -rerun)
-tp.rerun             -- pass -rerun so texpresso converges TOC/refs after
-                     -- idle (latexmk-style multi-pass). Default: false.
+-- Idle convergence (requires a texpresso build with the (rerun) command)
+tp.rerun             -- send (rerun t) at launch so texpresso converges
+                     -- TOC/refs after idle (latexmk-style). Default: false.
+tp.rerun_toggle()    -- toggle convergence on/off at runtime
+tp.rerun_once()      -- trigger a single on-demand convergence pass
 
 -- Stream mode (requires a texpresso build with -stream)
 tp.stream_mode       -- set to true before launch() to enable streaming

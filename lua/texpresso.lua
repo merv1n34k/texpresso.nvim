@@ -15,8 +15,9 @@ M.stream_mode = false
 -- preview.tex) that the user shouldn't be dropped into.
 M.synctex_backward_enabled = true
 
--- Pass -rerun so texpresso converges TOC/refs after idle (latexmk-style
--- multi-pass). Default off for compat with old texpresso builds.
+-- Send (rerun t) at startup so texpresso converges TOC/refs after idle
+-- (latexmk-style multi-pass). Toggle at runtime with M.rerun_toggle(),
+-- or trigger a single pass with M.rerun_once(). Default off.
 M.rerun = false
 
 -- Glob patterns used by M.prime() to collect project files to push
@@ -188,6 +189,12 @@ end
 -- pattern. Tracks texpresso's [rerun] messages and the LaTeX engine's
 -- "Output written on" / rerun-hint output.
 local function classify_status_line(line)
+  if line:match('^%[rerun%] on%-demand: finishing pass') then
+    M.status.rerun = { pass = 1, total = 1 }
+    M.status.outcome = nil
+    M.status.rerun_hint = false
+    return
+  end
   local pass, total = line:match('^%[rerun%] idle %d+ms: finishing pass (%d+)/(%d+)')
   if pass then
     M.status.rerun = { pass = tonumber(pass), total = tonumber(total) }
@@ -417,6 +424,18 @@ function M.previous_page()
   M.send('previous-page')
 end
 
+-- Toggle idle convergence reruns on/off at runtime
+function M.rerun_toggle()
+  M.rerun = not M.rerun
+  M.send('rerun', M.rerun)
+  return M.rerun
+end
+
+-- Trigger a single on-demand convergence pass
+function M.rerun_once()
+  M.send('rerun-once')
+end
+
 -- Go to the page under the cursor
 function M.synctex_forward()
   local line, _col = unpack(vim.api.nvim_win_get_cursor(0))
@@ -491,9 +510,6 @@ function M.launch(args)
   local cmd = { M.texpresso_path, '-json', '-lines' }
   if M.stream_mode then
     table.insert(cmd, '-stream')
-  end
-  if M.rerun then
-    table.insert(cmd, '-rerun')
   end
 
   if #args == 0 then
@@ -584,6 +600,9 @@ function M.launch(args)
   end
   if M.stream_mode then
     M.send('resume')
+  end
+  if M.rerun then
+    M.send('rerun', true)
   end
 end
 
